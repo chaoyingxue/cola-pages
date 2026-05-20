@@ -387,31 +387,27 @@ let activeHotFilter = null;
 
 // ── Fetch from arXiv ──
 async function fetchPapers() {
+  // Try static JSON first (pre-fetched by GitHub Action, served by local proxy or CDN)
+  try {
+    const resp = await fetch('papers.json');
+    if (resp.ok) {
+      const data = await resp.json();
+      console.log(`Loaded ${data.papers.length} papers from static cache (updated ${data.updated})`);
+      return data.papers;
+    }
+  } catch (e) { /* fall through to live API */ }
+
+  // Fallback: live arXiv API via local proxy
   const now = new Date();
   const to = now.toISOString().slice(0, 10).replace(/-/g, '');
   const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
   const query = `cat:math.* AND submittedDate:[${from}0000 TO ${to}2359]`.replace(/ /g, '+');
   const apiPath = `query?search_query=${query}&sortBy=submittedDate&sortOrder=descending&start=0&max_results=200`;
 
-  // Try direct, then CORS proxy
-  const urls = [
-    `https://export.arxiv.org/api/${apiPath}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://export.arxiv.org/api/${apiPath}`)}`
-  ];
-
-  let lastError = '';
-  for (const url of urls) {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const xml = await resp.text();
-      if (!xml.includes('<entry>') && !xml.includes('<totalResults>')) throw new Error('empty');
-      return parseArxivXML(xml);
-    } catch (e) {
-      lastError = e.message;
-    }
-  }
-  throw new Error(lastError || 'arXiv unreachable');
+  const resp = await fetch(`/api/arxiv?${apiPath}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const xml = await resp.text();
+  return parseArxivXML(xml);
 }
 
 function parseArxivXML(xml) {
