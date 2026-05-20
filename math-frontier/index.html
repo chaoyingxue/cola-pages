@@ -390,19 +390,28 @@ async function fetchPapers() {
   const now = new Date();
   const to = now.toISOString().slice(0, 10).replace(/-/g, '');
   const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
-  // Must NOT encode : [ ] — arXiv's parser needs them literal
   const query = `cat:math.* AND submittedDate:[${from}0000 TO ${to}2359]`.replace(/ /g, '+');
+  const apiPath = `query?search_query=${query}&sortBy=submittedDate&sortOrder=descending&start=0&max_results=200`;
 
-  const url = `https://export.arxiv.org/api/query?search_query=${query}&sortBy=submittedDate&sortOrder=descending&start=0&max_results=200`;
+  // Try direct, then CORS proxy
+  const urls = [
+    `https://export.arxiv.org/api/${apiPath}`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://export.arxiv.org/api/${apiPath}`)}`
+  ];
 
-  try {
-    const resp = await fetch(url);
-    const xml = await resp.text();
-    return parseArxivXML(xml);
-  } catch (e) {
-    console.error('arXiv fetch failed:', e);
-    return [];
+  let lastError = '';
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const xml = await resp.text();
+      if (!xml.includes('<entry>') && !xml.includes('<totalResults>')) throw new Error('empty');
+      return parseArxivXML(xml);
+    } catch (e) {
+      lastError = e.message;
+    }
   }
+  throw new Error(lastError || 'arXiv unreachable');
 }
 
 function parseArxivXML(xml) {
@@ -546,15 +555,34 @@ function getTimeLabel() {
 
 // ── Init ──
 async function init() {
-  allPapers = await fetchPapers();
-  renderStats(allPapers);
-  applyFilters();
-
-  // Auto-refresh every 30 min
-  setInterval(async () => {
+  try {
     allPapers = await fetchPapers();
     renderStats(allPapers);
     applyFilters();
+  } catch (e) {
+    document.getElementById('papersGrid').innerHTML = `
+      <div class="empty">
+        <div class="icon">🔌</div>
+        <p style="color:#f59e0b;font-weight:600;">arXiv 连接失败</p>
+        <p style="font-size:0.85rem;">浏览器直接访问 arXiv 被 CORS 拦截，且 CORS 代理不可用。</p>
+        <p style="font-size:0.85rem;margin-top:8px;">试试用本地文件打开：右键 → 打开方式 → 浏览器</p>
+        <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:12px;">错误: ${e.message}</p>
+      </div>`;
+    document.getElementById('totalPapers').textContent = '—';
+    document.getElementById('hotPapers').textContent = '—';
+    document.getElementById('activeFields').textContent = '—';
+    return;
+  }
+
+  // Auto-refresh every 30 min
+  setInterval(async () => {
+    try {
+      allPapers = await fetchPapers();
+      renderStats(allPapers);
+      applyFilters();
+    } catch (e) {
+      console.error('Refresh failed:', e);
+    }
   }, 30 * 60 * 1000);
 }
 
