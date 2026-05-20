@@ -291,7 +291,7 @@
   </header>
 
   <div class="stats-bar" id="statsBar">
-    <div class="stat-item"><div class="number" id="totalPapers">—</div><div class="label">今日论文</div></div>
+    <div class="stat-item"><div class="number" id="totalPapers">—</div><div class="label">近30天论文</div></div>
     <div class="stat-item"><div class="number" id="hotPapers">—</div><div class="label">热点方向</div></div>
     <div class="stat-item"><div class="number" id="activeFields">—</div><div class="label">活跃领域</div></div>
   </div>
@@ -336,7 +336,7 @@
   </div>
 
   <footer>
-    <p>数据来源 <a href="https://arxiv.org" target="_blank">arXiv.org</a> · 每 30 分钟自动刷新 · 本站仅聚合展示公开学术信息</p>
+    <p>数据来源 <a href="https://arxiv.org" target="_blank">arXiv.org</a> · 每 30 分钟自动刷新 · 近30天论文 · 本站仅聚合展示公开学术信息</p>
   </footer>
 
 </div>
@@ -387,12 +387,17 @@ let activeHotFilter = null;
 
 // ── Fetch from arXiv ──
 async function fetchPapers() {
+  const now = new Date();
+  const to = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
+  const query = `cat:math.* AND submittedDate:[${from}0000 TO ${to}2359]`;
+
   const url = 'https://export.arxiv.org/api/query?' + new URLSearchParams({
-    search_query: 'cat:math.*',
+    search_query: query,
     sortBy: 'submittedDate',
     sortOrder: 'descending',
     start: 0,
-    max_results: 50
+    max_results: 200
   });
 
   try {
