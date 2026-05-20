@@ -1,0 +1,56 @@
+name: Fetch arXiv Papers
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Fetch arXiv data
+        run: |
+          NOW=$(date -u +%Y%m%d)
+          FROM=$(date -u -d '30 days ago' +%Y%m%d)
+          QUERY="cat:math.* AND submittedDate:[${FROM}0000 TO ${NOW}2359]"
+          URL="https://export.arxiv.org/api/query?search_query=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$QUERY', safe=':*[]'))")&sortBy=submittedDate&sortOrder=descending&start=0&max_results=200"
+
+          curl -s -H "User-Agent: MathFrontierTracker/1.0" "$URL" > math-frontier/arxiv-feed.xml
+
+          # Convert XML to JSON for the frontend
+          python3 -c "
+import xml.etree.ElementTree as ET, json, sys
+ns = {'atom': 'http://www.w3.org/2005/Atom', 'arxiv': 'http://arxiv.org/schemas/atom'}
+tree = ET.parse('math-frontier/arxiv-feed.xml')
+root = tree.getroot()
+papers = []
+for entry in root.findall('atom:entry', ns):
+    paper = {
+        'id': entry.find('atom:id', ns).text.replace('http://arxiv.org/abs/', '') if entry.find('atom:id', ns) is not None else '',
+        'title': ' '.join((entry.find('atom:title', ns).text or '').split()) if entry.find('atom:title', ns) is not None else '',
+        'abstract': ' '.join((entry.find('atom:summary', ns).text or '').split()) if entry.find('atom:summary', ns) is not None else '',
+        'authors': [a.find('atom:name', ns).text for a in entry.findall('atom:author', ns) if a.find('atom:name', ns) is not None],
+        'categories': [c.get('term') for c in entry.findall('atom:category', ns)],
+        'published': entry.find('atom:published', ns).text if entry.find('atom:published', ns) is not None else '',
+        'updated': entry.find('atom:updated', ns).text if entry.find('atom:updated', ns) is not None else '',
+    }
+    papers.append(paper)
+with open('math-frontier/papers.json', 'w') as f:
+    json.dump({'updated': '$(date -u +%Y-%m-%dT%H:%M:%SZ)', 'total': len(papers), 'papers': papers}, f, ensure_ascii=False)
+print(f'Fetched {len(papers)} papers')
+"
+
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add math-frontier/papers.json math-frontier/arxiv-feed.xml
+          git diff --staged --quiet || git commit -m "Update arXiv papers $(date -u +%Y-%m-%d)"
+          git push
