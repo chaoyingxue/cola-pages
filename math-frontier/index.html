@@ -392,13 +392,7 @@ async function fetchPapers() {
   const from = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
   const query = `cat:math.* AND submittedDate:[${from}0000 TO ${to}2359]`;
 
-  const url = 'https://export.arxiv.org/api/query?' + new URLSearchParams({
-    search_query: query,
-    sortBy: 'submittedDate',
-    sortOrder: 'descending',
-    start: 0,
-    max_results: 200
-  });
+  const url = `https://export.arxiv.org/api/query?search_query=${encodeURI(query).replace(/%20/g, '+')}&sortBy=submittedDate&sortOrder=descending&start=0&max_results=200`;
 
   try {
     const resp = await fetch(url);
