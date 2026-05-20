@@ -53,4 +53,5 @@ print(f'Fetched {len(papers)} papers')
           git config user.email "action@github.com"
           git add math-frontier/papers.json math-frontier/arxiv-feed.xml
           git diff --staged --quiet || git commit -m "Update arXiv papers $(date -u +%Y-%m-%d)"
-          git push
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin gh-pages
