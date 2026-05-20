@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数学前沿追踪 — Math Frontier Tracker</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --text: #e0e0e8;
+    --text-secondary: #9090a8;
+    --accent: #7c5cfc;
+    --accent-2: #38bdf8;
+    --accent-3: #f472b6;
+    --tag-bg: #1e1e30;
+    --hot: #f59e0b;
+    --green: #34d399;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p {
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-size: 0.95rem;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .stat-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    min-width: 140px;
+  }
+  .stat-item .number {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-item .label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+  .filter-btn {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .search-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .auto-refresh {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .auto-refresh .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Hot Topics */
+  .hot-topics {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 16px;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .hot-topics .section-label {
+    font-size: 0.8rem;
+    color: var(--hot);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .hot-tag {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--hot);
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .hot-tag:hover { background: rgba(245, 158, 11, 0.25); }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 64px 0;
+    color: var(--text-secondary);
+  }
+  .loading .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Paper Cards */
+  .papers-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .paper-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .paper-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(124, 92, 252, 0.1);
+  }
+  .paper-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .paper-card .title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .paper-card .categories {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .category-tag {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    color: var(--accent-2);
+    white-space: nowrap;
+  }
+  .category-tag.hot-topic {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--hot);
+  }
+  .paper-card .authors {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .paper-card .abstract {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.5;
+  }
+  .paper-card .meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  .paper-card .meta a {
+    color: var(--accent-2);
+    text-decoration: none;
+  }
+  .paper-card .meta a:hover { text-decoration: underline; }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 48px 0;
+    color: var(--text-secondary);
+  }
+  .empty .icon { font-size: 2rem; margin-bottom: 12px; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 48px 0 32px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+  footer a { color: var(--accent-2); text-decoration: none; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    header h1 { font-size: 1.5rem; }
+    .stats-bar { gap: 12px; }
+    .stat-item { min-width: 100px; padding: 12px 16px; }
+    .stat-item .number { font-size: 1.2rem; }
+    .paper-card .card-header { flex-direction: column; }
+    .paper-card .categories { justify-content: flex-start; }
+    .controls { flex-direction: row; }
+    .search-input { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <h1>数学前沿追踪</h1>
+    <p>实时追踪 arXiv 数学板块最新论文 · 自动分类 · 热点标注</p>
+  </header>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item"><div class="number" id="totalPapers">—</div><div class="label">今日论文</div></div>
+    <div class="stat-item"><div class="number" id="hotPapers">—</div><div class="label">热点方向</div></div>
+    <div class="stat-item"><div class="number" id="activeFields">—</div><div class="label">活跃领域</div></div>
+  </div>
+
+  <div class="hot-topics" id="hotTopics">
+    <span class="section-label">🔥 热点方向</span>
+    <span class="hot-tag" data-filter="AI">AI + 数学证明</span>
+    <span class="hot-tag" data-filter="Langlands">朗兰兹纲领</span>
+    <span class="hot-tag" data-filter="random matrix">随机矩阵</span>
+    <span class="hot-tag" data-filter="combinatorial optimization">组合优化</span>
+    <span class="hot-tag" data-filter="topological data">拓扑数据分析</span>
+    <span class="hot-tag" data-filter="quantum">量子数学</span>
+    <span class="hot-tag" data-filter="number theory">数论新进展</span>
+    <span class="hot-tag" data-filter="deep learning">深度学习理论</span>
+  </div>
+
+  <div class="controls" id="controls">
+    <button class="filter-btn active" data-category="all">全部</button>
+    <button class="filter-btn" data-category="AG">代数几何</button>
+    <button class="filter-btn" data-category="NT">数论</button>
+    <button class="filter-btn" data-category="AP">分析与PDE</button>
+    <button class="filter-btn" data-category="DG">微分几何</button>
+    <button class="filter-btn" data-category="PR">概率</button>
+    <button class="filter-btn" data-category="CO">组合</button>
+    <button class="filter-btn" data-category="MP">数学物理</button>
+    <button class="filter-btn" data-category="ST">统计</button>
+    <button class="filter-btn" data-category="OC">优化</button>
+    <button class="filter-btn" data-category="LO">逻辑</button>
+    <button class="filter-btn" data-category="other">其他</button>
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍 搜索标题/作者...">
+    <div class="auto-refresh">
+      <span class="dot"></span>
+      <span id="refreshTime">刚刚更新</span>
+    </div>
+  </div>
+
+  <div class="papers-grid" id="papersGrid">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>正在从 arXiv 拉取最新论文...</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>数据来源 <a href="https://arxiv.org" target="_blank">arXiv.org</a> · 每 30 分钟自动刷新 · 本站仅聚合展示公开学术信息</p>
+  </footer>
+
+</div>
+
+<script>
+// ── arXiv Math Category Map ──
+const CATEGORY_MAP = {
+  'math.AG': '代数几何', 'math.AT': '代数拓扑', 'math.AP': '分析与PDE',
+  'math.CT': '范畴论', 'math.CA': '经典分析', 'math.CO': '组合',
+  'math.AC': '交换代数', 'math.CV': '复分析', 'math.DG': '微分几何',
+  'math.DS': '动力系统', 'math.FA': '泛函分析', 'math.GM': '通用数学',
+  'math.GN': '一般拓扑', 'math.GT': '几何拓扑', 'math.GR': '群论',
+  'math.HO': '数学史', 'math.IT': '信息论', 'math.KT': 'K理论与同调',
+  'math.LO': '逻辑', 'math.MP': '数学物理', 'math.MG': '度量几何',
+  'math.NT': '数论', 'math.NA': '数值分析', 'math.OA': '算子代数',
+  'math.OC': '优化与控制', 'math.PR': '概率', 'math.QA': '量子代数',
+  'math.RT': '表示论', 'math.RA': '环与代数', 'math.ST': '统计理论',
+  'math.SG': '辛几何', 'math.SP': '谱理论'
+};
+
+const CATEGORY_GROUPS = {
+  'AG': /math\.(AG|AC|RT|RA|CT|KT|QA)/,
+  'NT': /math\.(NT|GR|LO)/,
+  'AP': /math\.(AP|CA|CV|FA|SP|OA)/,
+  'DG': /math\.(DG|GT|MG|SG|AT|GN)/,
+  'PR': /math\.(PR|ST|IT)/,
+  'CO': /math\.(CO|GM)/,
+  'MP': /math\.(MP|DS)/,
+  'OC': /math\.(OC|NA)/,
+  'ST': /math\.(ST|IT)/,
+  'LO': /math\.(LO|HO|CT|GN)/,
+};
+
+const HOT_KEYWORDS = [
+  { keyword: /AI|machine learning|neural network|theorem prov|formalization|LLM|transformer/i, tag: 'AI+数学' },
+  { keyword: /Langlands|automorphic|Galois/i, tag: '朗兰兹' },
+  { keyword: /random matrix|random graph|stochastic/i, tag: '随机矩阵' },
+  { keyword: /combinatorial optim|integer program|graph algorithm|approximation algorithm/i, tag: '组合优化' },
+  { keyword: /topological data|persistent homology|Morse/i, tag: '拓扑数据' },
+  { keyword: /quantum|entanglement|qubit|anyon/i, tag: '量子数学' },
+  { keyword: /Riemann|zeta|prime number|twin prime|Goldbach|elliptic curve|modular form/i, tag: '数论前沿' },
+  { keyword: /deep learning|gradient descent|generalization bound|neural tangent|SGD/i, tag: '深度学习理论' },
+];
+
+let allPapers = [];
+let activeFilter = 'all';
+let activeHotFilter = null;
+
+// ── Fetch from arXiv ──
+async function fetchPapers() {
+  const url = 'https://export.arxiv.org/api/query?' + new URLSearchParams({
+    search_query: 'cat:math.*',
+    sortBy: 'submittedDate',
+    sortOrder: 'descending',
+    start: 0,
+    max_results: 50
+  });
+
+  try {
+    const resp = await fetch(url);
+    const xml = await resp.text();
+    return parseArxivXML(xml);
+  } catch (e) {
+    console.error('arXiv fetch failed:', e);
+    return [];
+  }
+}
+
+function parseArxivXML(xml) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'text/xml');
+  const entries = doc.querySelectorAll('entry');
+  const papers = [];
+
+  entries.forEach(entry => {
+    const id = entry.querySelector('id')?.textContent || '';
+    const title = entry.querySelector('title')?.textContent?.trim().replace(/\s+/g, ' ') || '';
+    const abstract = entry.querySelector('summary')?.textContent?.trim().replace(/\s+/g, ' ') || '';
+    const published = entry.querySelector('published')?.textContent || '';
+    const updated = entry.querySelector('updated')?.textContent || '';
+
+    const authors = [];
+    entry.querySelectorAll('author name').forEach(a => authors.push(a.textContent.trim()));
+
+    const categories = [];
+    entry.querySelectorAll('category[term^="math."]').forEach(c => {
+      categories.push(c.getAttribute('term'));
+    });
+
+    const links = [];
+    entry.querySelectorAll('link[title="pdf"]').forEach(l => links.push(l.getAttribute('href')));
+    const arxivId = id.replace('http://arxiv.org/abs/', '');
+
+    papers.push({ id: arxivId, title, abstract, authors, categories, published, updated, pdf: links[0] || id });
+  });
+
+  return papers;
+}
+
+// ── Render ──
+function getGroup(categories) {
+  for (const cat of categories) {
+    for (const [group, re] of Object.entries(CATEGORY_GROUPS)) {
+      if (re.test(cat)) return group;
+    }
+  }
+  return 'other';
+}
+
+function getCategoryNames(categories) {
+  return categories.map(c => CATEGORY_MAP[c] || c.replace('math.', '')).filter(Boolean);
+}
+
+function getHotTags(paper) {
+  const text = paper.title + ' ' + paper.abstract;
+  const tags = [];
+  HOT_KEYWORDS.forEach(hk => {
+    if (hk.keyword.test(text)) tags.push(hk.tag);
+  });
+  return tags;
+}
+
+function renderStats(papers) {
+  document.getElementById('totalPapers').textContent = papers.length;
+  const hotCount = papers.filter(p => getHotTags(p).length > 0).length;
+  document.getElementById('hotPapers').textContent = hotCount;
+  const fields = new Set();
+  papers.forEach(p => fields.add(getGroup(p.categories)));
+  document.getElementById('activeFields').textContent = fields.size;
+}
+
+function renderPapers(papers) {
+  const grid = document.getElementById('papersGrid');
+
+  if (papers.length === 0) {
+    grid.innerHTML = `<div class="empty"><div class="icon">📭</div><p>暂无匹配论文</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = papers.map(p => {
+    const hotTags = getHotTags(p);
+    const catNames = getCategoryNames(p.categories);
+    const allTags = [...catNames, ...hotTags.map(t => ({ name: t, isHot: true }))];
+    const authorStr = p.authors.slice(0, 3).join(', ') + (p.authors.length > 3 ? ` 等 ${p.authors.length} 人` : '');
+    const date = new Date(p.published).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+
+    return `
+      <div class="paper-card" data-group="${getGroup(p.categories)}" data-hot="${hotTags.join(',')}" onclick="window.open('${p.id}','_blank')">
+        <div class="card-header">
+          <div class="title">${escapeHtml(p.title)}</div>
+          <div class="categories">
+            ${catNames.slice(0, 3).map(c => `<span class="category-tag">${c}</span>`).join('')}
+            ${hotTags.map(t => `<span class="category-tag hot-topic">🔥 ${t}</span>`).join('')}
+          </div>
+        </div>
+        <div class="authors">${escapeHtml(authorStr)}</div>
+        <div class="abstract">${escapeHtml(p.abstract)}</div>
+        <div class="meta">
+          <span>📅 ${date}</span>
+          <span>📄 arXiv:${p.id.split('/').pop()}</span>
+          ${p.pdf ? `<a href="${p.pdf}" target="_blank" onclick="event.stopPropagation()">📥 PDF</a>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function applyFilters() {
+  let filtered = allPapers;
+
+  if (activeHotFilter) {
+    filtered = filtered.filter(p => {
+      const tags = getHotTags(p);
+      return tags.some(t => t.toLowerCase().includes(activeHotFilter.toLowerCase()));
+    });
+  }
+
+  if (activeFilter !== 'all') {
+    filtered = filtered.filter(p => getGroup(p.categories) === activeFilter);
+  }
+
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+  if (searchTerm) {
+    filtered = filtered.filter(p =>
+      p.title.toLowerCase().includes(searchTerm) ||
+      p.authors.some(a => a.toLowerCase().includes(searchTerm)) ||
+      p.abstract.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  renderPapers(filtered);
+  document.getElementById('refreshTime').textContent = getTimeLabel();
+}
+
+function getTimeLabel() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2, '0');
+  const m = now.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m} 更新`;
+}
+
+// ── Init ──
+async function init() {
+  allPapers = await fetchPapers();
+  renderStats(allPapers);
+  applyFilters();
+
+  // Auto-refresh every 30 min
+  setInterval(async () => {
+    allPapers = await fetchPapers();
+    renderStats(allPapers);
+    applyFilters();
+  }, 30 * 60 * 1000);
+}
+
+// ── Event Listeners ──
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+
+  // Category filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.category;
+      activeHotFilter = null;
+      applyFilters();
+    });
+  });
+
+  // Hot topic tags
+  document.querySelectorAll('.hot-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.filter-btn[data-category="all"]').classList.add('active');
+      activeFilter = 'all';
+      activeHotFilter = tag.dataset.filter;
+      applyFilters();
+    });
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input', () => {
+    applyFilters();
+  });
+});
+</script>
+</body>
+</html>
